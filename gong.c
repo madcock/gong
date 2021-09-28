@@ -21,6 +21,7 @@
    "You can do whatever you want with the code, but I am providing it as is without any warranty whatsoever."
  */
 
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <libretro.h>
