@@ -51,7 +51,8 @@ static retro_environment_t GONG_CORE_PREFIX(environ_cb);
 
 static const char *GONG_CORE_PREFIX(valid_extensions) = "gong";
 
-static unsigned char *video_buf = NULL;
+typedef uint16_t pixel_t;
+static pixel_t *video_buf = NULL;
 
 enum
 {
@@ -60,6 +61,10 @@ enum
    B_SPEED_UP,
    B_COUNT /* This should always be in the bottom */
 };
+
+static INLINE pixel_t gong_rgb(uint8_t r, uint8_t g, uint8_t b) {
+   return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | ((b & 0xf8) >> 3);
+}
 
 /* any changes here must be handled in serialization code too */
 typedef struct
@@ -114,11 +119,11 @@ typedef struct
 
 typedef struct
 {
-   /* Pixels are always 32-bit wide, memory order XX BB GG RR */
+   /* Pixels are always 16-bit wide, memory order RGB565 */
    int width;
    int height;
    int pitch;
-   void *memory;
+   pixel_t *memory;
 } Game_Offscreen_Buffer;
 
 static State *g_state = NULL;
@@ -387,11 +392,11 @@ void GONG_CORE_PREFIX(retro_init)(void)
    else
       GONG_CORE_PREFIX(log_cb) = NULL;
 
-   video_buf = (unsigned char*)calloc(1, WIDTH * HEIGHT * sizeof(unsigned));
+   video_buf = (pixel_t*)calloc(1, WIDTH * HEIGHT * sizeof(pixel_t));
 
    game_buffer.width  = WIDTH;
    game_buffer.height = HEIGHT;
-   game_buffer.pitch  = WIDTH * sizeof(unsigned);
+   game_buffer.pitch  = WIDTH * sizeof(pixel_t);
    game_buffer.memory = video_buf;
 }
 
@@ -492,14 +497,14 @@ void GONG_CORE_PREFIX(retro_cheat_set)(unsigned a, bool b, const char * c)
 
 bool GONG_CORE_PREFIX(retro_load_game)(const struct retro_game_info *info)
 {
-   enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_XRGB8888;
+   enum retro_pixel_format fmt = RETRO_PIXEL_FORMAT_RGB565;
 
    check_variables();
 
    if (!GONG_CORE_PREFIX(environ_cb)(RETRO_ENVIRONMENT_SET_PIXEL_FORMAT, &fmt))
    {
       if (GONG_CORE_PREFIX(log_cb))
-         GONG_CORE_PREFIX(log_cb)(RETRO_LOG_INFO, "XRGB8888 is not supported.\n");
+         GONG_CORE_PREFIX(log_cb)(RETRO_LOG_INFO, "RGB565 is not supported.\n");
       return false;
    }
 
@@ -606,7 +611,7 @@ void GONG_CORE_PREFIX(retro_run)(void)
 
    game_update_and_render(g_state->g_input, &game_buffer);
 
-   GONG_CORE_PREFIX(video_cb)(video_buf, WIDTH, HEIGHT, WIDTH * sizeof(uint32_t));
+   GONG_CORE_PREFIX(video_cb)(video_buf, WIDTH, HEIGHT, WIDTH * sizeof(pixel_t));
 }
 
 unsigned GONG_CORE_PREFIX(retro_api_version)(void)
@@ -629,9 +634,7 @@ static void draw_rect_in_pixels(Game_Offscreen_Buffer *buffer, unsigned color, i
 
       for (x = min_x; x < max_x; x++)
       {
-         unsigned *pixel = (unsigned*)((unsigned char*)buffer->memory + ((buffer->width * (buffer->height - y - 1) + x) * sizeof(unsigned)));
-
-         *pixel++ = color;
+         buffer->memory[buffer->width * (buffer->height - y - 1) + x] = color;
       }
    }
 }
@@ -670,7 +673,7 @@ static void draw_rect(Game_Offscreen_Buffer *buffer, unsigned color, float x, fl
    draw_rect_in_pixels(buffer, color, min_x, min_y, max_x, max_y);
 }
 
-static void draw_number(Game_Offscreen_Buffer *buffer, unsigned number, unsigned color, float x, float y)
+static void draw_number(Game_Offscreen_Buffer *buffer, unsigned number, pixel_t color, float x, float y)
 {
    float at_x = x;
 
@@ -926,15 +929,15 @@ static void game_update_and_render(Game_Input *input, Game_Offscreen_Buffer *dra
       }
    }
 
-   clear(draw_buffer, 0x021077);
-   draw_rect(draw_buffer, 0x000530, 0.f, 0.f, playing_field_x, playing_field_y);
+   clear(draw_buffer, gong_rgb(0x02, 0x10, 0x77));
+   draw_rect(draw_buffer, gong_rgb(0, 0x05, 0x30), 0.f, 0.f, playing_field_x, playing_field_y);
 
-   draw_rect(draw_buffer, 0x00ffff, -80.f, g_state->player[0].py.f, player_size_x, player_size_y);
-   draw_rect(draw_buffer, 0x00ffff, 80.f, g_state->player[1].py.f, player_size_x, player_size_y);
+   draw_rect(draw_buffer, gong_rgb(0, 0xff, 0xff), -80.f, g_state->player[0].py.f, player_size_x, player_size_y);
+   draw_rect(draw_buffer, gong_rgb(0, 0xff, 0xff), 80.f, g_state->player[1].py.f, player_size_x, player_size_y);
 
-   draw_rect(draw_buffer, 0xffff00, g_state->ball_px.f, g_state->ball_py.f, 1.f, 1.f);
+   draw_rect(draw_buffer, gong_rgb(0xff, 0xff, 0), g_state->ball_px.f, g_state->ball_py.f, 1.f, 1.f);
 
-   draw_number(draw_buffer, (unsigned)g_state->current_play_points.f, 0xaaaaaa, 0.f, 38.f);
-   draw_number(draw_buffer, g_state->player1_score, 0xff6611, 20.f, 38.f);
-   draw_number(draw_buffer, g_state->player2_score, 0xff6611, -20.f, 38.f);
+   draw_number(draw_buffer, (unsigned)g_state->current_play_points.f, gong_rgb(0xaa, 0xaa, 0xaa), 0.f, 38.f);
+   draw_number(draw_buffer, g_state->player1_score, gong_rgb(0xff, 0x66, 0x11), 20.f, 38.f);
+   draw_number(draw_buffer, g_state->player2_score, gong_rgb(0xff, 0x66, 0x11), -20.f, 38.f);
 }
