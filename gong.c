@@ -364,7 +364,10 @@ static INLINE bool is_down(Game_Button_State state)
 void GONG_CORE_PREFIX(retro_get_system_info)(struct retro_system_info *info)
 {
    info->library_name     = "gong";
-   info->library_version  = "v1.0";
+#ifndef GIT_VERSION
+#define GIT_VERSION ""
+#endif
+   info->library_version  = "v1.0" GIT_VERSION;
    info->need_fullpath    = false;
    info->block_extract    = false;
    info->valid_extensions = GONG_CORE_PREFIX(valid_extensions);
