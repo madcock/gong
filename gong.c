@@ -63,7 +63,11 @@ enum
 };
 
 static INLINE pixel_t gong_rgb(uint8_t r, uint8_t g, uint8_t b) {
+#ifdef ABGR1555
+   return ((b & 0xf8) << 7) | ((g & 0xf8) << 2) | ((r & 0xf8) >> 3);
+#else
    return ((r & 0xf8) << 8) | ((g & 0xfc) << 3) | ((b & 0xf8) >> 3);
+#endif
 }
 
 /* any changes here must be handled in serialization code too */
