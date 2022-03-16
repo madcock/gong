@@ -114,8 +114,8 @@ include:
 
   #################################### MISC ##################################
   # Emscripten
-  #- project: 'libretro-infrastructure/ci-templates'
-  #  file: '/emscripten-static.yml'
+  - project: 'libretro-infrastructure/ci-templates'
+    file: '/emscripten-static.yml'
 
 # Stages for building
 stages:
@@ -312,7 +312,7 @@ libretro-build-rs90-odbeta-mips32:
 
 #################################### MISC ##################################
 # Emscripten
-#libretro-build-emscripten:
-  #extends:
-    #- .libretro-emscripten-static-retroarch-master
-    #- .core-defs
+libretro-build-emscripten:
+  extends:
+    - .libretro-emscripten-static-retroarch-master
+    - .core-defs
