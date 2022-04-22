@@ -113,7 +113,7 @@ typedef struct
    union { float f; unsigned u; } ball_dpy;
    union { float f; unsigned u; } ball_speed;
    union { float f; unsigned u; } current_play_points;
-   float refresh; /* not in savestate */
+   int refresh; /* not in savestate */
    bool is_initialized;
    bool player2_human;
    uint16_t previnput[MAX_PLAYERS];
@@ -159,18 +159,36 @@ struct retro_input_descriptor desc[] = {
    { 0 },
 };
 
+static struct retro_frame_time_callback frame_cb;   
+
+static void frame_time_cb(retro_usec_t usec)
+{
+   int i;
+   for (i = 0; i < (int)(sizeof(g_state->g_input) / sizeof(g_state->g_input[0])); i++)
+      g_state->g_input[i].last_dt = usec / 1e6;
+}
+
+
 static void check_variables(void)
 {
    struct retro_variable var        = {0};
+   int old_refresh = g_state->refresh;
 
    var.key = "gong_refresh";
    if (GONG_CORE_PREFIX(environ_cb)(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
    {
       int i;
-      g_state->refresh = atoi(var.value);
+      int new_refresh = atoi(var.value);
+      g_state->refresh = new_refresh;
 
       for (i = 0; i < (int)(sizeof(g_state->g_input) / sizeof(g_state->g_input[0])); i++)
          g_state->g_input[i].last_dt = 1.0f / g_state->refresh;
+
+      if (old_refresh != new_refresh) {
+	 frame_cb.callback  = frame_time_cb;
+	 frame_cb.reference = 1e6 / g_state->refresh;
+	 environ_cb(RETRO_ENVIRONMENT_SET_FRAME_TIME_CALLBACK, &frame_cb);
+      }
    }
 
    var.key = "gong_player2";
