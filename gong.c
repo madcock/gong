@@ -403,7 +403,11 @@ void GONG_CORE_PREFIX(retro_get_system_av_info)(struct retro_system_av_info *inf
    info->geometry.max_height   = HEIGHT;
    info->geometry.aspect_ratio = 16.0f / 9.0f;
    info->timing.fps            = g_state->refresh;
+#if !defined(SF2000)
    info->timing.sample_rate    = 44100.0;
+#else
+   info->timing.sample_rate    = 11025.0;
+#endif
 }
 
 void GONG_CORE_PREFIX(retro_init)(void)
